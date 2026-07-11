@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // Generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const generateToken = (id, tokenVersion) => {
+  return jwt.sign({ id, tokenVersion: tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 // @desc    Register a participant
@@ -33,7 +33,8 @@ const registerParticipant = async (req, res) => {
       role: 'participant',
       participantType,
       contactNumber,
-      collegeOrOrg
+      collegeOrOrg,
+      tokenVersion: 0
     });
 
     res.status(201).json({
@@ -44,7 +45,7 @@ const registerParticipant = async (req, res) => {
       role: user.role,
       participantType: user.participantType,
       onboardingComplete: user.onboardingComplete,
-      token: generateToken(user._id)
+      token: generateToken(user._id, user.tokenVersion)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -84,7 +85,7 @@ const loginUser = async (req, res) => {
       onboardingComplete: user.onboardingComplete,
       interests: user.interests,
       followedClubs: user.followedClubs,
-      token: generateToken(user._id)
+      token: generateToken(user._id, user.tokenVersion)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -143,4 +144,25 @@ const uploadProfilePicture = async (req, res) => {
   }
 };
 
-module.exports = { registerParticipant, loginUser, getMe, completeOnboarding, uploadProfilePicture };
+// @desc    Logout from all devices (revoke all tokens)
+// @route   POST /api/auth/logout-all
+// @access  Private
+const logoutFromAllDevices = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+    res.json({ message: 'Logged out from all devices successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { 
+  registerParticipant, 
+  loginUser, 
+  getMe, 
+  completeOnboarding, 
+  uploadProfilePicture,
+  logoutFromAllDevices
+};

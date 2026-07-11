@@ -14,6 +14,11 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: 'Account is disabled or not found' });
       }
 
+      // Enforce token version verification for stateless revocation
+      if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== req.user.tokenVersion) {
+        return res.status(401).json({ message: 'Session expired or revoked' });
+      }
+
       next();
     } catch (error) {
       return res.status(401).json({ message: 'Not authorized, token failed' });

@@ -1,21 +1,33 @@
-import React from 'react';
+import * as React from "react"
+import { cva } from "class-variance-authority"
+import { cn } from "../../utils/cn"
 
-export const Badge = ({ className = '', variant = 'default', children, ...props }) => {
-  const baseStyles = 'status-badge';
-  
-  const variants = {
-    default: 'border-purple-500/30 bg-purple-500/10 text-purple-300',
-    secondary: 'border-white/10 bg-white/5 text-slate-300',
-    destructive: 'border-red-500/30 bg-red-500/10 text-red-300',
-    outline: 'border-white/20 text-slate-200 bg-transparent',
-    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-  };
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-red-500/20 text-red-400 hover:bg-red-500/30",
+        outline: "text-foreground border-white/20",
+        success: "border-transparent bg-emerald-500/20 text-emerald-400",
+        warning: "border-transparent bg-amber-500/20 text-amber-400",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
 
-  const variantStyle = variants[variant] || variants.default;
-
+function Badge({ className, variant, ...props }) {
   return (
-    <div className={`${baseStyles} ${variantStyle} ${className}`} {...props}>
-      {children}
-    </div>
-  );
-};
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
+}
+
+export { Badge, badgeVariants }

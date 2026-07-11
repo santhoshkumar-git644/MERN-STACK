@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import QRScanner from '../../components/QRScanner';
-import { ArrowLeft, Download, QrCode } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { ArrowLeft, Download, QrCode, Users, CheckCircle, XCircle, SearchX } from 'lucide-react';
 
 const Participants = () => {
   const { id } = useParams();
@@ -31,9 +36,9 @@ const Participants = () => {
           ? { ...r, attendanceMarked: true, attendanceTimestamp: res.data.timestamp }
           : r
       ));
-      alert(`Attendance marked for ${res.data.participant.firstName}`);
+      alert(`Attendance marked successfully for ${res.data.participant.firstName}`);
     } catch {
-      alert('Invalid ticket');
+      alert('Invalid or already used ticket');
     }
   };
 
@@ -54,126 +59,156 @@ const Participants = () => {
 
   if (loading) {
     return (
-      <div className="flex h-[60vh] w-full items-center justify-center">
-        <div className="loading-spinner w-10 h-10 border-2" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="h-10 w-48 bg-card/50 rounded-lg mb-8 animate-pulse"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {[1,2,3].map(i => <div key={i} className="h-32 bg-card/40 rounded-2xl animate-pulse"></div>)}
+        </div>
+        <div className="h-96 bg-card/40 rounded-[2rem] animate-pulse"></div>
       </div>
     );
   }
 
   const presentCount = registrations.filter(r => r.attendanceMarked).length;
+  const absentCount = registrations.length - presentCount;
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 animated-fade">
-      {/* Navigation */}
-      <button 
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden pb-24">
+      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen" />
+
+      <Button 
+        variant="ghost" 
         onClick={() => navigate('/organizer/events')} 
-        className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-8"
+        className="mb-8 hover:bg-white/5 hover:text-white text-muted-foreground transition-colors h-10 px-4"
       >
-        <ArrowLeft className="w-4 h-4" /> 
-        Back to events
-      </button>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Events
+      </Button>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
-        <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Attendees</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage registrations for {event?.eventName}</p>
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button 
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-all" 
-            onClick={downloadCSV}
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
-          <button 
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-white text-black hover:bg-slate-200 text-sm font-semibold py-2.5 px-4 rounded-xl transition-all" 
-            onClick={() => setShowScanner(!showScanner)}
-          >
-            <QrCode className="w-4 h-4" />
-            {showScanner ? 'Close Scanner' : 'Scan QR'}
-          </button>
-        </div>
+      <PageHeader 
+        title="Event Attendees"
+        description={`Manage registrations and attendance for ${event?.eventName}`}
+        actions={
+          <>
+            <Button 
+              variant="outline"
+              onClick={downloadCSV}
+              className="rounded-xl border-white/10 hover:bg-white/5 h-11"
+            >
+              <Download className="w-4 h-4 mr-2" /> Export CSV
+            </Button>
+            <Button 
+              onClick={() => setShowScanner(!showScanner)}
+              className="rounded-xl shadow-[0_0_15px_rgba(139,92,246,0.3)] h-11"
+            >
+              <QrCode className="w-4 h-4 mr-2" /> {showScanner ? 'Close Scanner' : 'Scan Ticket QR'}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <Card className="rounded-[2rem] border-white/5 bg-card/40 backdrop-blur-xl shadow-lg relative overflow-hidden">
+          <CardContent className="p-8 text-center">
+            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-6 h-6 text-slate-300" />
+            </div>
+            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Total Registered</div>
+            <div className="text-4xl font-extrabold text-white">{registrations.length}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-[2rem] border-white/5 bg-card/40 backdrop-blur-xl shadow-lg relative overflow-hidden">
+          <CardContent className="p-8 text-center">
+            <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2 text-emerald-500">Checked In (Present)</div>
+            <div className="text-4xl font-extrabold text-white">{presentCount}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="rounded-[2rem] border-white/5 bg-card/40 backdrop-blur-xl shadow-lg relative overflow-hidden">
+          <CardContent className="p-8 text-center">
+            <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <XCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2 text-red-500">Yet to Arrive (Absent)</div>
+            <div className="text-4xl font-extrabold text-white">{absentCount}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4 text-center">
-          <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Registered</div>
-          <div className="text-2xl font-semibold text-white mt-1">{registrations.length}</div>
-        </div>
-        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4 text-center">
-          <div className="text-xs text-slate-400 font-medium uppercase tracking-wider text-emerald-400">Present</div>
-          <div className="text-2xl font-semibold text-white mt-1">{presentCount}</div>
-        </div>
-        <div className="bg-white/[0.02] border border-white/10 rounded-xl p-4 text-center">
-          <div className="text-xs text-slate-400 font-medium uppercase tracking-wider text-red-400">Absent</div>
-          <div className="text-2xl font-semibold text-white mt-1">{registrations.length - presentCount}</div>
-        </div>
-      </div>
-
-      {/* Scanner Panel */}
       {showScanner && (
-        <div className="mb-8 rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl p-6">
-          <QRScanner onScanSuccess={handleScan} />
-        </div>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+          <Card className="rounded-[2rem] border-primary/20 bg-primary/5 backdrop-blur-2xl shadow-2xl overflow-hidden p-8 flex flex-col items-center">
+            <h3 className="text-xl font-bold text-white mb-6">Scan Participant Ticket</h3>
+            <div className="w-full max-w-md rounded-2xl overflow-hidden border-4 border-black/40 shadow-inner bg-black">
+              <QRScanner onScanSuccess={handleScan} />
+            </div>
+          </Card>
+        </motion.div>
       )}
 
-      {/* Attendees List */}
-      <div className="space-y-4">
-        {registrations.map(reg => (
-          <div 
-            key={reg._id} 
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/[0.03] transition-all"
-          >
-            <div className="space-y-2">
-              <div>
-                <h3 className="font-semibold text-white text-base">
-                  {reg.participant.firstName} {reg.participant.lastName}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">{reg.participant.email}</p>
+      <Card className="rounded-[2rem] border-white/5 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <CardHeader className="border-b border-white/5 bg-black/20 p-6 sm:px-8">
+          <CardTitle className="text-xl font-bold text-white">Participants List</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {registrations.length === 0 ? (
+            <div className="p-16 text-center">
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <SearchX className="w-8 h-8 text-slate-500" />
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] py-0.5 px-2 rounded-full uppercase border font-medium ${
-                  reg.participant.participantType === 'iiit' 
-                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
-                    : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                }`}>
-                  {reg.participant.participantType}
-                </span>
-                <span className={`text-[10px] py-0.5 px-2 rounded-full uppercase border font-medium ${
-                  reg.status === 'confirmed' 
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                }`}>
-                  {reg.status}
-                </span>
-              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No registrations yet</h3>
+              <p className="text-muted-foreground text-sm">When participants register, they will appear here.</p>
             </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {registrations.map((reg, idx) => (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 * Math.min(idx, 10) }} // limit delay for many items
+                  key={reg._id} 
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:px-8 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg font-bold text-primary shrink-0 shadow-inner">
+                      {reg.participant.firstName.charAt(0)}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-white text-base">
+                        {reg.participant.firstName} {reg.participant.lastName}
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-medium">{reg.participant.email}</p>
+                      
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <Badge variant="outline" className="bg-white/5 border-white/10 text-slate-300 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5">
+                          {reg.participant.participantType === 'iiit' ? 'IIIT' : 'External'}
+                        </Badge>
+                        <Badge variant={reg.status === 'confirmed' ? "success" : "warning"} className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5">
+                          {reg.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="flex flex-row sm:flex-col sm:items-end justify-between items-center gap-2 border-t border-white/5 pt-3 sm:border-0 sm:pt-0">
-              <span className={`text-xs py-1 px-3 rounded-full font-medium ${
-                reg.attendanceMarked 
-                  ? 'bg-emerald-500/15 text-emerald-400' 
-                  : 'bg-red-500/15 text-red-400'
-              }`}>
-                {reg.attendanceMarked ? 'Present' : 'Absent'}
-              </span>
-              {reg.attendanceTimestamp && (
-                <span className="text-xs text-slate-500 font-mono">
-                  Checked in: {new Date(reg.attendanceTimestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
+                  <div className="flex flex-row sm:flex-col sm:items-end justify-between items-center gap-2 pt-4 sm:pt-0 border-t border-white/5 sm:border-0">
+                    <Badge variant={reg.attendanceMarked ? "success" : "destructive"} className="text-xs px-3 py-1 uppercase tracking-widest font-bold">
+                      {reg.attendanceMarked ? 'Present' : 'Absent'}
+                    </Badge>
+                    {reg.attendanceTimestamp && (
+                      <span className="text-xs text-slate-500 font-mono font-medium">
+                        {new Date(reg.attendanceTimestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </div>
-        ))}
-        {registrations.length === 0 && (
-          <div className="text-center py-12 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
-            <p className="text-slate-400 text-sm">No participants registered yet.</p>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
