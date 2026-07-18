@@ -62,7 +62,8 @@ app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/forum', require('./routes/forumRoutes'));
 app.use('/api/feedback', require('./routes/feedbackRoutes'));
 
-// Health check
+// Health checks
+app.get('/', (req, res) => res.json({ status: 'Felicity API Root is running' }));
 app.get('/api/health', (req, res) => res.json({ status: 'Felicity API is running', timestamp: new Date() }));
 
 // Error Handling Middleware
