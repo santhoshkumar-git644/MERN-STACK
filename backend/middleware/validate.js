@@ -8,12 +8,15 @@ const validate = (schema) => async (req, res, next) => {
     return next();
   } catch (error) {
     res.status(400);
-    // Extract Zod errors
-    const extractedErrors = error.errors.map(err => ({
-      field: err.path.join('.'),
-      message: err.message
-    }));
-    return res.json({ message: 'Validation Failed', errors: extractedErrors });
+    if (error.name === 'ZodError') {
+      const issues = error.errors || error.issues || [];
+      const extractedErrors = issues.map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return res.json({ message: 'Validation Failed', errors: extractedErrors });
+    }
+    return res.json({ message: 'Validation Failed', error: error.message || 'Unknown validation error' });
   }
 };
 
