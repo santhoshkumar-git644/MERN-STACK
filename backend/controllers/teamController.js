@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const Team = require('../models/Team');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
@@ -10,7 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 // @desc    Create a team for an event
 // @route   POST /api/teams
 // @access  Private (participant)
-const createTeam = async (req, res) => {
+const createTeam = async (req, res, next) => {
   try {
     const { eventId, teamName, maxSize } = req.body;
 
@@ -36,14 +37,14 @@ const createTeam = async (req, res) => {
 
     res.status(201).json({ team, inviteCode });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Join a team via invite code
 // @route   POST /api/teams/join
 // @access  Private (participant)
-const joinTeam = async (req, res) => {
+const joinTeam = async (req, res, next) => {
   try {
     const { inviteCode } = req.body;
 
@@ -69,7 +70,7 @@ const joinTeam = async (req, res) => {
     await team.save();
     res.json({ message: 'Joined team successfully', team });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
@@ -102,7 +103,7 @@ const generateTeamTickets = async (team) => {
         eventDate: new Date(event.eventStartDate).toLocaleDateString()
       });
     } catch (e) {
-      console.error('Email error for team ticket:', e.message);
+      logger.error('Email error for team ticket:', e.message);
     }
   }
 };
@@ -110,7 +111,7 @@ const generateTeamTickets = async (team) => {
 // @desc    Get team details
 // @route   GET /api/teams/:id
 // @access  Private
-const getTeam = async (req, res) => {
+const getTeam = async (req, res, next) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate('leader', 'firstName lastName email')
@@ -119,20 +120,20 @@ const getTeam = async (req, res) => {
     if (!team) return res.status(404).json({ message: 'Team not found' });
     res.json(team);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get my teams
 // @route   GET /api/teams/my
 // @access  Private
-const getMyTeams = async (req, res) => {
+const getMyTeams = async (req, res, next) => {
   try {
     const teamsAsLeader = await Team.find({ leader: req.user._id }).populate('event', 'eventName');
     const teamsAsMember = await Team.find({ 'members.user': req.user._id }).populate('event', 'eventName');
     res.json({ leading: teamsAsLeader, member: teamsAsMember });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

@@ -1,15 +1,16 @@
+const logger = require('../config/logger');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const User = require('../models/User');
 const { generateQRCode } = require('../utils/qrGenerator');
-const { sendTicketEmail } = require('../utils/emailService');
+const { addEmailJob } = require('../config/queue');
 const { v4: uuidv4 } = require('uuid');
 
 // @desc    Register for a normal event
 // @route   POST /api/registrations/register
 // @access  Private (participant)
-const registerForEvent = async (req, res) => {
+const registerForEvent = async (req, res, next) => {
   try {
     const { eventId, formResponses } = req.body;
 
@@ -75,19 +76,17 @@ const registerForEvent = async (req, res) => {
     await event.save();
 
     // Send email with ticket
-    try {
-      await sendTicketEmail({
-        to: participant.email,
-        participantName: `${participant.firstName} ${participant.lastName}`,
+    // Queue email with ticket
+    await addEmailJob('registration-confirmation', {
+      type: 'registration-confirmation',
+      data: {
+        email: participant.email,
+        name: `${participant.firstName} ${participant.lastName}`,
         eventName: event.eventName,
-        ticketId,
-        qrCodeBase64: qrCode,
-        eventDate: new Date(event.eventStartDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        venue: 'Felicity Venue'
-      });
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError.message);
-    }
+        ticketType: 'normal',
+        qrCodeBuffer: qrCode // passing base64 directly to queue
+      }
+    });
 
     res.status(201).json({
       message: 'Registration successful! Ticket sent to your email.',
@@ -98,14 +97,14 @@ const registerForEvent = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ message: 'You are already registered for this event' });
     }
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get participant's registrations
 // @route   GET /api/registrations/my
 // @access  Private (participant)
-const getMyRegistrations = async (req, res) => {
+const getMyRegistrations = async (req, res, next) => {
   try {
     const registrations = await Registration.find({ participant: req.user._id })
       .populate({
@@ -122,14 +121,14 @@ const getMyRegistrations = async (req, res) => {
 
     res.json(withTickets);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get ticket by ID
 // @route   GET /api/registrations/ticket/:ticketId
 // @access  Private
-const getTicketById = async (req, res) => {
+const getTicketById = async (req, res, next) => {
   try {
     const ticket = await Ticket.findOne({ ticketId: req.params.ticketId })
       .populate('event', 'eventName eventStartDate eventType organizer')
@@ -144,14 +143,14 @@ const getTicketById = async (req, res) => {
 
     res.json(ticket);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get registrations for an event (organizer)
 // @route   GET /api/registrations/event/:eventId
 // @access  Private (organizer)
-const getEventRegistrations = async (req, res) => {
+const getEventRegistrations = async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.eventId);
     if (!event) return res.status(404).json({ message: 'Event not found' });
@@ -164,14 +163,14 @@ const getEventRegistrations = async (req, res) => {
 
     res.json(registrations);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Mark attendance via QR scan
 // @route   POST /api/registrations/attendance
 // @access  Private (organizer)
-const markAttendance = async (req, res) => {
+const markAttendance = async (req, res, next) => {
   try {
     const { ticketId } = req.body;
 
@@ -200,14 +199,14 @@ const markAttendance = async (req, res) => {
       timestamp: registration.attendanceTimestamp
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Export attendance CSV
 // @route   GET /api/registrations/event/:eventId/attendance-csv
 // @access  Private (organizer)
-const exportAttendanceCSV = async (req, res) => {
+const exportAttendanceCSV = async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.eventId);
     if (!event || event.organizer.toString() !== req.user._id.toString()) {
@@ -227,7 +226,7 @@ const exportAttendanceCSV = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${event.eventName}-attendance.csv`);
     res.send(csvHeader + csvRows);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const User = require('../models/User');
 const PasswordResetRequest = require('../models/PasswordResetRequest');
 const Registration = require('../models/Registration');
@@ -7,21 +8,21 @@ const Event = require('../models/Event');
 // @desc    Get participant profile
 // @route   GET /api/participants/profile
 // @access  Private (participant)
-const getProfile = async (req, res) => {
+const getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id)
       .select('-password')
       .populate('followedClubs', 'name category');
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Update participant profile
 // @route   PUT /api/participants/profile
 // @access  Private (participant)
-const updateProfile = async (req, res) => {
+const updateProfile = async (req, res, next) => {
   try {
     const { firstName, lastName, contactNumber, collegeOrOrg, interests, followedClubs } = req.body;
     const user = await User.findById(req.user._id);
@@ -36,14 +37,14 @@ const updateProfile = async (req, res) => {
     await user.save();
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Change password
 // @route   PUT /api/participants/change-password
 // @access  Private (participant)
-const changePassword = async (req, res) => {
+const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const user = await User.findById(req.user._id);
@@ -55,28 +56,28 @@ const changePassword = async (req, res) => {
     await user.save();
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get all organizers (for following)
 // @route   GET /api/participants/organizers
 // @access  Private (participant)
-const getOrganizers = async (req, res) => {
+const getOrganizers = async (req, res, next) => {
   try {
     const organizers = await User.find({ role: 'organizer', isActive: true })
       .select('name email category description clubLogoUrl')
       .sort({ name: 1 });
     res.json(organizers);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Organizer requests password reset
 // @route   POST /api/participants/request-password-reset (organizer route)
 // @access  Private (organizer)
-const requestPasswordReset = async (req, res) => {
+const requestPasswordReset = async (req, res, next) => {
   try {
     const { reason } = req.body;
     const existing = await PasswordResetRequest.findOne({ organizer: req.user._id, status: 'pending' });
@@ -86,14 +87,14 @@ const requestPasswordReset = async (req, res) => {
     const resetReq = await PasswordResetRequest.create({ organizer: req.user._id, reason });
     res.status(201).json({ message: 'Password reset request submitted to Admin', request: resetReq });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get participant dashboard stats
 // @route   GET /api/participants/dashboard
 // @access  Private (participant)
-const getDashboardData = async (req, res) => {
+const getDashboardData = async (req, res, next) => {
   try {
     const registrations = await Registration.find({ participant: req.user._id }).populate('event');
     const upcomingEvents = registrations.filter(r => r.event && new Date(r.event.eventStartDate) >= new Date()).length;
@@ -115,7 +116,7 @@ const getDashboardData = async (req, res) => {
       recentRegistrations
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const User = require('../models/User');
 const { generatePassword } = require('../utils/generatePassword');
 const { sendOrganizerCredentials, sendPasswordResetEmail } = require('../utils/emailService');
@@ -6,7 +7,7 @@ const PasswordResetRequest = require('../models/PasswordResetRequest');
 // @desc    Create organizer account (admin only)
 // @route   POST /api/admin/organizers
 // @access  Private (admin)
-const createOrganizer = async (req, res) => {
+const createOrganizer = async (req, res, next) => {
   try {
     const { name, category, description, contactEmail } = req.body;
 
@@ -39,7 +40,7 @@ const createOrganizer = async (req, res) => {
         password
       });
     } catch (e) {
-      console.error('Email error:', e.message);
+      logger.error('Email error:', e.message);
     }
 
     res.status(201).json({
@@ -53,26 +54,26 @@ const createOrganizer = async (req, res) => {
       credentials: { loginEmail, password } // also return in response
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get all organizers
 // @route   GET /api/admin/organizers
 // @access  Private (admin)
-const getAllOrganizers = async (req, res) => {
+const getAllOrganizers = async (req, res, next) => {
   try {
     const organizers = await User.find({ role: 'organizer' }).select('-password').sort({ createdAt: -1 });
     res.json(organizers);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Disable/enable organizer
 // @route   PUT /api/admin/organizers/:id/toggle
 // @access  Private (admin)
-const toggleOrganizerStatus = async (req, res) => {
+const toggleOrganizerStatus = async (req, res, next) => {
   try {
     const organizer = await User.findById(req.params.id);
     if (!organizer || organizer.role !== 'organizer') {
@@ -82,14 +83,14 @@ const toggleOrganizerStatus = async (req, res) => {
     await organizer.save();
     res.json({ message: `Organizer ${organizer.isActive ? 'enabled' : 'disabled'}`, isActive: organizer.isActive });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Delete organizer permanently
 // @route   DELETE /api/admin/organizers/:id
 // @access  Private (admin)
-const deleteOrganizer = async (req, res) => {
+const deleteOrganizer = async (req, res, next) => {
   try {
     const organizer = await User.findById(req.params.id);
     if (!organizer || organizer.role !== 'organizer') {
@@ -98,28 +99,28 @@ const deleteOrganizer = async (req, res) => {
     await organizer.deleteOne();
     res.json({ message: 'Organizer deleted permanently' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get all password reset requests
 // @route   GET /api/admin/password-resets
 // @access  Private (admin)
-const getPasswordResetRequests = async (req, res) => {
+const getPasswordResetRequests = async (req, res, next) => {
   try {
     const requests = await PasswordResetRequest.find()
       .populate('organizer', 'name email category')
       .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Approve or reject password reset request
 // @route   PUT /api/admin/password-resets/:id
 // @access  Private (admin)
-const handlePasswordResetRequest = async (req, res) => {
+const handlePasswordResetRequest = async (req, res, next) => {
   try {
     const { action, adminComment } = req.body; // action: 'approve' | 'reject'
 
@@ -145,7 +146,7 @@ const handlePasswordResetRequest = async (req, res) => {
           newPassword
         });
       } catch (e) {
-        console.error('Email error:', e.message);
+        logger.error('Email error:', e.message);
       }
 
       res.json({ message: 'Password reset approved. New password sent to admin email.', newPassword });
@@ -157,14 +158,14 @@ const handlePasswordResetRequest = async (req, res) => {
       res.json({ message: 'Password reset request rejected.' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/stats
 // @access  Private (admin)
-const getAdminStats = async (req, res) => {
+const getAdminStats = async (req, res, next) => {
   try {
     const Event = require('../models/Event');
     const Registration = require('../models/Registration');
@@ -179,7 +180,7 @@ const getAdminStats = async (req, res) => {
 
     res.json({ totalOrganizers, totalParticipants, totalEvents, totalRegistrations, pendingResets });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

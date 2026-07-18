@@ -1,5 +1,7 @@
+const logger = require('../config/logger');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { addEmailJob } = require('../config/queue');
 
 // Generate JWT token
 const generateToken = (id, tokenVersion) => {
@@ -9,7 +11,7 @@ const generateToken = (id, tokenVersion) => {
 // @desc    Register a participant
 // @route   POST /api/auth/register
 // @access  Public
-const registerParticipant = async (req, res) => {
+const registerParticipant = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password, participantType, contactNumber, collegeOrOrg } = req.body;
 
@@ -37,6 +39,12 @@ const registerParticipant = async (req, res) => {
       tokenVersion: 0
     });
 
+    // Queue Welcome Email (non-blocking)
+    await addEmailJob('welcome-email', {
+      type: 'welcome',
+      data: { email: user.email, name: user.firstName || user.name }
+    });
+
     res.status(201).json({
       _id: user._id,
       firstName: user.firstName,
@@ -48,14 +56,14 @@ const registerParticipant = async (req, res) => {
       token: generateToken(user._id, user.tokenVersion)
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
-const loginUser = async (req, res) => {
+const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
@@ -88,14 +96,14 @@ const loginUser = async (req, res) => {
       token: generateToken(user._id, user.tokenVersion)
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get current user profile
 // @route   GET /api/auth/me
 // @access  Private
-const getMe = async (req, res) => {
+const getMe = async (req, res, next) => {
   const user = await User.findById(req.user._id).select('-password').populate('followedClubs', 'name category');
   res.json(user);
 };
@@ -103,7 +111,7 @@ const getMe = async (req, res) => {
 // @desc    Complete onboarding (interests + followed clubs)
 // @route   POST /api/auth/onboarding
 // @access  Private (participant)
-const completeOnboarding = async (req, res) => {
+const completeOnboarding = async (req, res, next) => {
   try {
     const { interests, followedClubs } = req.body;
 
@@ -115,20 +123,21 @@ const completeOnboarding = async (req, res) => {
 
     res.json({ message: 'Onboarding complete', interests: user.interests, followedClubs: user.followedClubs });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Upload profile picture
 // @route   POST /api/auth/upload-profile
 // @access  Private
-const uploadProfilePicture = async (req, res) => {
+const uploadProfilePicture = async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Please upload a file' });
     }
 
-    const fileUrl = `/uploads/profiles/${req.file.filename}`;
+    // multer-storage-cloudinary places the URL in req.file.path
+    const fileUrl = req.file.path;
     const user = await User.findById(req.user._id);
 
     if (user.role === 'organizer' || user.role === 'admin') {
@@ -140,21 +149,21 @@ const uploadProfilePicture = async (req, res) => {
     await user.save();
     res.json({ message: 'Profile picture uploaded successfully', fileUrl });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Logout from all devices (revoke all tokens)
 // @route   POST /api/auth/logout-all
 // @access  Private
-const logoutFromAllDevices = async (req, res) => {
+const logoutFromAllDevices = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
     res.json({ message: 'Logged out from all devices successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

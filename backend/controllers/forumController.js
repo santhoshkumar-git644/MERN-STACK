@@ -1,10 +1,11 @@
+const logger = require('../config/logger');
 const ForumMessage = require('../models/ForumMessage');
 const Registration = require('../models/Registration');
 
 // @desc    Get forum messages for an event
 // @route   GET /api/forum/:eventId
 // @access  Private
-const getMessages = async (req, res) => {
+const getMessages = async (req, res, next) => {
   try {
     const messages = await ForumMessage.find({
       event: req.params.eventId,
@@ -25,14 +26,14 @@ const getMessages = async (req, res) => {
 
     res.json(withReplies);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Post a message
 // @route   POST /api/forum/:eventId
 // @access  Private (registered participant or organizer)
-const postMessage = async (req, res) => {
+const postMessage = async (req, res, next) => {
   try {
     const { content, parentMessage } = req.body;
 
@@ -59,14 +60,14 @@ const postMessage = async (req, res) => {
 
     res.status(201).json(populated);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Delete a message (organizer or author)
 // @route   DELETE /api/forum/message/:id
 // @access  Private
-const deleteMessage = async (req, res) => {
+const deleteMessage = async (req, res, next) => {
   try {
     const message = await ForumMessage.findById(req.params.id);
     if (!message) return res.status(404).json({ message: 'Message not found' });
@@ -81,14 +82,14 @@ const deleteMessage = async (req, res) => {
     req.io.to(message.event.toString()).emit('message-deleted', message._id);
     res.json({ message: 'Message deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Pin/unpin a message (organizer only)
 // @route   PUT /api/forum/message/:id/pin
 // @access  Private (organizer)
-const togglePin = async (req, res) => {
+const togglePin = async (req, res, next) => {
   try {
     const message = await ForumMessage.findById(req.params.id);
     if (!message) return res.status(404).json({ message: 'Message not found' });
@@ -97,14 +98,14 @@ const togglePin = async (req, res) => {
     await message.save();
     res.json({ message: `Message ${message.isPinned ? 'pinned' : 'unpinned'}`, isPinned: message.isPinned });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    React to a message
 // @route   POST /api/forum/message/:id/react
 // @access  Private
-const reactToMessage = async (req, res) => {
+const reactToMessage = async (req, res, next) => {
   try {
     const { emoji } = req.body;
     const message = await ForumMessage.findById(req.params.id);
@@ -120,7 +121,7 @@ const reactToMessage = async (req, res) => {
     await message.save();
     res.json(message.reactions);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

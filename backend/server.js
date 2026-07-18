@@ -6,11 +6,16 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const User = require('./models/User');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+const requestLogger = require('./middleware/requestLogger');
+const logger = require('./config/logger');
+require('./workers/emailWorker'); // Start the BullMQ email worker
 
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+// We will connect to MongoDB before starting the server
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +32,18 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
+app.use(requestLogger);
+app.use(helmet());
+
+// Global Rate Limiter
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 200 requests per windowMs
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', globalLimiter);
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
@@ -48,13 +65,17 @@ app.use('/api/feedback', require('./routes/feedbackRoutes'));
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'Felicity API is running', timestamp: new Date() }));
 
+// Error Handling Middleware
+app.use(notFound);
+app.use(errorHandler);
+
 // Socket.io events
 io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+  logger.info(`Socket connected: ${socket.id}`);
 
   socket.on('join-forum', (eventId) => {
     socket.join(eventId);
-    console.log(`Socket ${socket.id} joined forum: ${eventId}`);
+    logger.info(`Socket ${socket.id} joined forum: ${eventId}`);
   });
 
   socket.on('leave-forum', (eventId) => {
@@ -70,7 +91,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
+    logger.info(`Socket disconnected: ${socket.id}`);
   });
 });
 
@@ -89,15 +110,17 @@ const seedAdmin = async () => {
         isActive: true,
         onboardingComplete: true
       });
-      console.log('✅ Admin account created');
+      logger.info('✅ Admin account created');
     }
   } catch (error) {
-    console.error('Admin seeding error:', error.message);
+    logger.error('Admin seeding error:', error.message);
   }
 };
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, async () => {
-  console.log(`🚀 Felicity Server running on port ${PORT}`);
-  await seedAdmin();
+connectDB().then(() => {
+  server.listen(PORT, async () => {
+    logger.info(`🚀 Felicity Server running on port ${PORT}`);
+    await seedAdmin();
+  });
 });

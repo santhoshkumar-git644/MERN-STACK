@@ -1,10 +1,11 @@
+const logger = require('../config/logger');
 const Feedback = require('../models/Feedback');
 const Registration = require('../models/Registration');
 
 // @desc    Submit anonymous feedback
 // @route   POST /api/feedback/:eventId
 // @access  Private (participant - must have completed event)
-const submitFeedback = async (req, res) => {
+const submitFeedback = async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
 
@@ -31,14 +32,14 @@ const submitFeedback = async (req, res) => {
 
     res.status(201).json({ message: 'Feedback submitted anonymously. Thank you!', feedback });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get feedback for an event (organizer/admin)
 // @route   GET /api/feedback/:eventId
 // @access  Private (organizer/admin)
-const getEventFeedback = async (req, res) => {
+const getEventFeedback = async (req, res, next) => {
   try {
     const feedbacks = await Feedback.find({ event: req.params.eventId }).sort({ createdAt: -1 });
 
@@ -57,7 +58,7 @@ const getEventFeedback = async (req, res) => {
       feedbacks: feedbacks.map(f => ({ rating: f.rating, comment: f.comment, createdAt: f.createdAt }))
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
