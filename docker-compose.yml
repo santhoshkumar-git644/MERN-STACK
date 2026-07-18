@@ -34,9 +34,7 @@ services:
       - redis
 
   redis:
-    build:
-      context: ../../redis clone
-      dockerfile: docker/Dockerfile
+    image: redis:alpine
     container_name: mern_redis
     ports:
       - "6379:6379"

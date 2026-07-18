@@ -41,11 +41,10 @@ const cacheMiddleware = (key, ttl = 60) => async (req, res, next) => {
 const invalidateCache = async (pattern) => {
   if (!redisClient || redisClient.status !== 'ready') return;
   try {
-    if (pattern.includes('*')) {
-      console.warn(`[Warning] CacheX does not support wildcard deletions (KEYS command). Skipping invalidation for pattern: ${pattern}`);
-      return;
+    const keys = await redisClient.keys(pattern);
+    if (keys.length > 0) {
+      await redisClient.del(keys);
     }
-    await redisClient.del(pattern);
   } catch (error) {
     console.warn('Cache invalidation error:', error.message);
   }
